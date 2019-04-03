@@ -1,10 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"html/template"
+	"log"
+	"net/http"
 	"io/ioutil"
 )
 
+// Page ...
 type Page struct {
 	Title string
 	Body  []byte
@@ -24,10 +27,28 @@ func loadPage(title string) (*Page, error) {
 	return &Page{Title: title, Body: body}, nil
 }
 
-func main() {
-	p1 := &Page{Title: "test", Body: []byte("This is a sample page.")}
-	p1.save()
+func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	t, _ := template.ParseFiles(tmpl + ".html")
+	t.Execute(w, p)
+}
 
-	p2, _ := loadPage(p1.Title)
-	fmt.Println(string(p2.Body))
+func viewHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/view/"):]
+	p, _ := loadPage(title)
+	renderTemplate(w, "view", p)
+}
+
+func editHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/edit/"):]
+	p, err := loadPage(title)
+	if err != nil {
+		p =&Page{Title: title}
+	}
+	renderTemplate(w, "edit", p)
+}
+
+func main() {
+	http.HandleFunc("/view/", viewHandler)
+	http.HandleFunc("/edit/", editHandler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
